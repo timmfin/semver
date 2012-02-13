@@ -48,6 +48,11 @@ describe SemVer do
     v.format("%M.%m.%p%s").should == "2.5.11"
   end
   
+  it "should format correctly with no special" do
+    v = SemVer.new 4,5,7,'rc.2'
+    v.format("%M.%m.%p").should == '4.5.7'
+  end
+  
   it "should not to_s with dash if no special" do
     v = SemVer.new 2,5,11
     v.to_s.should == "v2.5.11"
