@@ -1,10 +1,11 @@
 require 'yaml'
-require 'semver/semvermissingerror'
+require 'semver-tribe/semvermissingerror'
 
 class SemVer
 
   FILE_NAME = '.semver'
   TAG_FORMAT = 'v%M.%m.%p%s'
+  WILDCARD = 'x'
 
   def SemVer.find dir=nil
     v = SemVer.new
@@ -33,15 +34,23 @@ class SemVer
   attr_accessor :major, :minor, :patch, :special
 
   def initialize major=0, minor=0, patch=0, special=''
-    major.kind_of? Integer or raise "invalid major: #{major}"
-    minor.kind_of? Integer or raise "invalid minor: #{minor}"
-    patch.kind_of? Integer or raise "invalid patch: #{patch}"
+    is_valid_part(major) or raise "invalid major: #{major}"
+    is_valid_part(minor) or raise "invalid minor: #{minor}"
+    is_valid_part(patch) or raise "invalid patch: #{patch}"
 
     unless special.empty?
       special =~ /[A-Za-z][0-9A-Za-z\.]+/ or raise "invalid special: #{special}"
     end
 
     @major, @minor, @patch, @special = major, minor, patch, special
+  end
+
+  def is_valid_part(part)
+    part.kind_of? Integer
+  end
+
+  def is_wildcard
+    false
   end
 
   def load file
@@ -107,12 +116,12 @@ class SemVer
     regex_str = Regexp.escape format
 
     # Convert all the format characters to named capture groups
-    regex_str.gsub! '%M', '(?<major>\d+)'
-    regex_str.gsub! '%m', '(?<minor>\d+)'
-    regex_str.gsub! '%p', '(?<patch>\d+)'
+    regex_str.gsub! '%M', '(?<major>(\d+|x|X))'
+    regex_str.gsub! '%m', '(?<minor>(\d+|x|X))'
+    regex_str.gsub! '%p', '(?<patch>(\d+|x|X))'
     regex_str.gsub! '%s', '(?:-(?<special>[A-Za-z][0-9A-Za-z\.]+))?'
 
-    regex = Regexp.new(regex_str)
+    regex = Regexp.new regex_str
     match = regex.match version_string
 
     if match
@@ -120,9 +129,10 @@ class SemVer
         special = ''
 
         # Extract out the version parts
-        major = match[:major].to_i if match.names.include? 'major'
-        minor = match[:minor].to_i if match.names.include? 'minor'
-        patch = match[:patch].to_i if match.names.include? 'patch'
+        major = extract_part_from_matches :major, match
+        minor = extract_part_from_matches :minor, match
+        patch = extract_part_from_matches :patch, match
+
         special = match[:special] || '' if match.names.include? 'special'
 
         # Failed parse if major, minor, or patch wasn't found
@@ -134,7 +144,95 @@ class SemVer
         minor ||= 0
         patch ||= 0
 
-        SemVer.new major, minor, patch, special
+        if major == WILDCARD or minor == WILDCARD or patch == WILDCARD
+          SemVerRange.new major, minor, patch, special
+        else
+          SemVer.new major, minor, patch, special
+        end
     end
   end
+
+  private
+
+  def self.extract_part_from_matches(part_name, match)
+    if match.names.include? part_name.to_s
+      value = match[part_name]
+      value = value.to_i unless value == WILDCARD
+      value
+    end
+  end
+end
+
+class SemVerRange < SemVer
+
+  def initialize major=0, minor=0, patch=0, special=''
+    if major != WILDCARD and minor != WILDCARD and patch != WILDCARD
+      raise "Invalid SemVerRange: #{major}.#{minor}.#{patch}"
+    end
+
+    super
+  end
+
+  def is_wildcard
+    true
+  end
+
+  def is_valid_part(part)
+    super or part == WILDCARD
+  end
+
+  def <=> other
+    maj = compare_part major, other.major
+    return maj unless maj == 0
+
+    min = compare_part minor, other.minor
+    return min unless min == 0
+
+    pat = compare_part patch, other.patch
+    return pat unless pat == 0
+
+    spe = special <=> other.special
+    return spec unless spe == 0
+
+    0
+  end
+
+  def compare_part(my_part, other_part)
+    if my_part == WILDCARD and other_part == WILDCARD
+      0
+    elsif my_part == WILDCARD
+      1
+    elsif other_part == WILDCARD
+      -1
+    else
+      my_part.to_i <=> other_part.to_i
+    end
+  end
+
+  def contains?(other)
+    raise "semver\#contains? is unimplemented"
+  end
+
+  def upper_bound
+    if major == WILDCARD
+      nil
+    elsif minor == WILDCARD
+      SemVer.new major + 1, 0, 0, special
+    elsif patch == WILDCARD
+      SemVer.new major, minor + 1, 0, special
+    end
+  end
+
+  def non_wildcard_prefix(format = '%M.%m')
+    format = format.dup
+
+    if major == WILDCARD
+      nil
+    elsif minor == WILDCARD
+      major.to_s
+    elsif patch == WILDCARD
+      format.gsub!('%M', major.to_s).gsub('%m', minor.to_s)
+    end
+  end
+
 end

@@ -1,4 +1,4 @@
-require 'semver'
+require 'semver-tribe'
 require 'tempfile'
 
 describe SemVer do
@@ -133,6 +133,85 @@ describe SemVer do
       SemVer.parse(str, format, true).should eq(semver)
 
       SemVer.parse(str, format, false).should be_nil
+    end
+  end
+
+  it "should parse wildcard versiosn" do
+    semver_strs = [
+      'v1.2.x',
+      'v1.x.x',
+      'v1.x.x-beta',
+    ]
+
+    semvers= [
+      SemVerRange.new(1, 2, 'x'),
+      SemVerRange.new(1, 'x', 'x'),
+      SemVerRange.new(1, 'x', 'x', 'beta'),
+    ]
+
+    semver_strs.zip(semvers).each do |args|
+      str, semver = args
+      parsed_semvar = SemVer.parse(str)
+      parsed_semvar.is_wildcard.should be_true
+      parsed_semvar.should eq(semver)
+    end
+  end
+end
+
+describe 'SemVerRange' do
+
+  it "should have format output with x's" do
+    semver_ranges = [
+      SemVerRange.new(1, 2, 'x'),
+      SemVerRange.new(1, 'x', 'x'),
+      SemVerRange.new(1, 'x', 'x', 'beta'),
+    ]
+
+    results = [
+      'v1.2.x',
+      'v1.x.x',
+      'v1.x.x-beta',
+    ]
+
+    semver_ranges.zip(results).each do |(range, output)|
+      range.to_s.should eq(output)
+    end
+  end
+
+  it "should have upper bounds" do
+    semver_ranges = [
+      SemVerRange.new(1, 2, 'x'),
+      SemVerRange.new(1, 'x', 'x'),
+      SemVerRange.new(1, 'x', 'x', 'beta'),
+    ]
+
+    semvers= [
+      SemVer.new(1, 3, 0),
+      SemVer.new(2, 0, 0),
+      SemVer.new(2, 0, 0, 'beta'),
+    ]
+
+    semver_ranges.zip(semvers).each do |args|
+      range, semver = args
+      range.upper_bound.should eq(semver)
+    end
+  end
+
+  it "should wildcard prefixes" do
+    semver_ranges = [
+      SemVerRange.new(1, 2, 'x'),
+      SemVerRange.new(1, 'x', 'x'),
+      SemVerRange.new(1, 'x', 'x', 'beta'),
+    ]
+
+    prefixes = [
+      '1.2',
+      '1',
+      '1',
+    ]
+
+    semver_ranges.zip(prefixes).each do |(range, prefix)|
+      range.non_wildcard_prefix.should eq(prefix)
     end
   end
 
