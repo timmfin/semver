@@ -71,16 +71,16 @@ describe SemVer do
       '0.10.100-b32',
       'version:3-0-45',
       '3$2^1',
-      '3$2^1&bla567',
+      '3$2^1-bla567',
     ]
 
     formats = [
       nil,
       SemVer::TAG_FORMAT,
-      '%M.%m.%p-%s',
+      '%M.%m.%p%s',
       'version:%M-%m-%p',
       '%M$%m^%p',
-      '%M$%m^%p&%s',
+      '%M$%m^%p%s',
     ]
 
     semvers= [
