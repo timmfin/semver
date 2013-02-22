@@ -177,6 +177,10 @@ class SemVerRange < SemVer
     true
   end
 
+  def is_complete_wildcard
+    major == WILDCARD && minor == WILDCARD && patch == WILDCARD && special.empty?
+  end
+
   def is_valid_part(part)
     super or part == WILDCARD
   end
@@ -223,6 +227,12 @@ class SemVerRange < SemVer
     end
   end
 
+  # The part of the version that isn't wildcarded. E.g.
+  #
+  #    1.2.x => "1.2"
+  #    2.x.x => "1"
+  #    3.4.5 => nil
+  #
   def non_wildcard_prefix(format = '%M.%m')
     format = format.dup
 
