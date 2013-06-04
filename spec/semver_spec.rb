@@ -152,7 +152,7 @@ describe SemVer do
     semver_strs.zip(semvers).each do |args|
       str, semver = args
       parsed_semvar = SemVer.parse(str)
-      parsed_semvar.is_wildcard.should be_true
+      parsed_semvar.is_wildcard?.should be_true
       parsed_semvar.should eq(semver)
     end
   end

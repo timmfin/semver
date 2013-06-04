@@ -49,7 +49,7 @@ class SemVer
     part.kind_of? Integer
   end
 
-  def is_wildcard
+  def is_wildcard?
     false
   end
 
@@ -173,7 +173,7 @@ class SemVerRange < SemVer
     super
   end
 
-  def is_wildcard
+  def is_wildcard?
     true
   end
 
